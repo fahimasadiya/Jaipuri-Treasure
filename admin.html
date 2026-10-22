@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jaipuri Treasure Admin</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #fff8f0;
+      color: #44251d;
+      padding: 20px;
+      margin: 0;
+    }
+
+    .container {
+      max-width: 450px;
+      margin: 20px auto;
+      background: white;
+      padding: 22px;
+      border-radius: 14px;
+      box-shadow: 0 2px 12px #00000012;
+    }
+
+    h1 {
+      color: #8b2635;
+      text-align: center;
+    }
+
+    label {
+      display: block;
+      margin-top: 16px;
+      font-weight: bold;
+    }
+
+    input, button {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 12px;
+      margin-top: 7px;
+      font-size: 16px;
+      border-radius: 8px;
+    }
+
+    input {
+      border: 1px solid #ccc;
+    }
+
+    button {
+      border: 0;
+      background: #8b2635;
+      color: white;
+      font-weight: bold;
+      margin-top: 22px;
+    }
+
+    #message {
+      text-align: center;
+      overflow-wrap: anywhere;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Jaipuri Treasure</h1>
+    <h3>Add New Dress</h3>
+<h3>Admin Login</h3>
+<form id="loginForm">
+  <label for="adminEmail">Email</label>
+  <input id="adminEmail" type="email"
+    placeholder="Apna email likhein" required>
+
+  <label for="adminPassword">Password</label>
+  <input id="adminPassword" type="password"
+    placeholder="Apna password likhein" required>
+
+  <button type="submit">Login</button>
+</form>
+
+    <form id="productForm"
+    style="display:none">
+
+      <label for="photo">Dress Photo</label>
+      <input id="photo" type="file" accept="image/*" required>
+
+      <label for="name">Dress Name</label>
+      <input id="name" type="text"
+        placeholder="e.g. Jaipuri Kurti" required>
+
+      <label for="price">Price (₹)</label>
+      <input id="price" type="number"
+        min="1" placeholder="e.g. 799" required>
+
+      <button type="submit">Add Product</button>
+    </form>
+
+    <p id="message">Admin form ready.</p>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <script>
+    
+  const SUPABASE_URL = "https://qpczhhmflrujpjxnlloq.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_Zj8yJtm6uSApstYknaDaDw_UryRu67z";
+
+  const supabaseClient = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+  );
+
+  document.getElementById("loginForm")
+  .addEventListener("submit", async function(event) {
+    event.preventDefault();
+
+    const email = document.getElementById("adminEmail").value;
+    const password = document.getElementById("adminPassword").value;
+    const message = document.getElementById("message");
+
+    message.textContent = "Login ho raha hai...";
+
+    const { error } = await supabaseClient.auth.signInWithPassword({
+      email: email,
+      password: password
+    });
+
+    if (error) {
+      message.textContent = "Login nahi hua. Email/password check karein.";
+      return;
+    }
+
+    document.getElementById("loginForm").style.display = "none";
+    document.getElementById("productForm").style.display = "block";
+    message.textContent = "Login successful!";
+  });
+
+  document.getElementById("productForm").addEventListener("submit", async function(event) {
+  event.preventDefault();
+
+  const message = document.getElementById("message");
+  const photo = document.getElementById("photo").files[0];
+  const name = document.getElementById("name").value.trim();
+  const price = Number(document.getElementById("price").value);
+
+  if (!photo || !name || !price) {
+    message.textContent = "Photo, name aur price bharein.";
+    return;
+  }
+
+  message.textContent = "Product save ho raha hai...";
+
+  const fileName = Date.now() + "-" + photo.name.replace(/[^a-zA-Z0-9._-]/g, "-");
+
+  const { data: uploaded, error: uploadError } = await supabaseClient
+    .storage.from("products")
+    .upload(fileName, photo);
+
+  if (uploadError) {
+    message.textContent = "Photo upload nahi hui: " + uploadError.message;
+    return;
+  }
+
+  const { data: publicData } = supabaseClient
+    .storage.from("products")
+    .getPublicUrl(uploaded.path);
+
+  const { error: insertError } = await supabaseClient
+    .from("products")
+    .insert([{
+      name: name,
+      price: price,
+      image_url: publicData.publicUrl
+    }]);
+
+  if (insertError) {
+    message.textContent = "Product save nahi hua: " + insertError.message;
+    return;
+  }
+
+  message.textContent = "Product successfully add ho gaya!";
+  document.getElementById("productForm").reset();
+});
+
+  </script>
+ </body>
+ </html>
